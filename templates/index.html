@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Video Search</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    video { width: 80%; margin-top: 20px; display: block; }
+    .chunks { margin-top: 20px; }
+    .chunk { 
+      padding: 8px; 
+      margin: 5px; 
+      border: 1px solid #ccc; 
+      border-radius: 5px; 
+      display: inline-block; 
+    }
+    .search-bar {
+      margin-top: 20px;
+    }
+    input[type="text"] {
+      padding: 8px;
+      width: 300px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 8px 12px;
+    }
+  </style>
+</head>
+<body>
+    <h2>Upload a Video</h2>
+
+    <form action="/" method="POST" enctype="multipart/form-data">
+      <input type="file" name="video" accept="video/*" required>
+      <button type="submit">Upload</button>
+    </form>
+
+    {% if video_uploaded %}
+        <h3>Uploaded Video:</h3>
+        <video id="myVideo" controls>
+            <source src="{{ url_for('static', filename='videos/' + video_file) }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+        <p>Video duration: {{ duration }} seconds</p>
+
+        <!-- 🔎 Search Bar -->
+        <form method="post" action="/query" class="search-bar">
+            <div class="search-bar">    
+                <input type="text" name="query" id="query" placeholder="Search in video..." required>  
+            </div>
+            <button type="submit">Search</button>
+        </form>
+
+    {% endif %}
+
+
+</body>
+</html>
