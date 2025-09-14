@@ -50,9 +50,20 @@
             </div>
             <button type="submit">Search</button>
         </form>
-
+      {% if query %}
+        <h4>Search Result for: "{{ query }}"</h4>
+        <p><b>Matched Topics:</b> {{ matched_topics }}</p>
+        <p><b>Start:</b> {{ start_sec }}s  | <b>End:</b> {{ end_sec }}s</p>
+        <button onclick="playFrom('{{ start_sec }}')">▶ Play from here</button>
+      {% endif %}
     {% endif %}
-
+<script>
+function playFrom(sec) {
+    var video = document.getElementById("myVideo");
+    video.currentTime = sec;
+    video.play();
+}
+</script>
 
 </body>
 </html>
