@@ -4,15 +4,13 @@ from pydub import AudioSegment
 import numpy as np
 from vosk import Model, KaldiRecognizer
 import json
-from bertopic import BERTopic
-from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.decomposition import LatentDirichletAllocation
 
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
-topic_model = BERTopic(embedding_model=embedder, verbose=True)
 
 # STT Model
-model_path = "./stt/vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15"
-recogniser = KaldiRecognizer(Model(model_path), 16000)
+MODEL_PATH = "./stt/vosk-model-en-us-0.22/vosk-model-en-us-0.22"
+recogniser = KaldiRecognizer(Model(MODEL_PATH), 16000)
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # Needed
@@ -24,6 +22,7 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
+        session.clear()
         # --- Save uploaded video ---
         file = request.files["video"]
         video_path = os.path.join(VIDEO_DIR, file.filename)
@@ -54,8 +53,8 @@ def index():
                 # store audio segments
                 samples = np.array(chunk.get_array_of_samples(), dtype=np.int16)
                 recogniser.AcceptWaveform(samples.tobytes())
-                text = json.loads(recogniser.Result()['text'])
-                
+                result = json.loads(recogniser.Result())
+                text = result.get("text", "")
                 start_sec = start_ms / 1000
                 end_sec = end_ms / 1000
 
@@ -64,12 +63,39 @@ def index():
                     "end_sec": float(end_sec),
                     "text": text
                 })
-            docs = [chunk["text"] for chunk in chunks_metadata]
-            print(docs)
-            topics, _ = topic_model.fit_transform(docs)
-            print(topic_model.get_topic_info())
+            # collect non-empty texts
+            docs = [chunk["text"] for chunk in chunks_metadata if chunk["text"].strip()]
+
+            # Topic modelling (LDA)
+            vectorizer = CountVectorizer(stop_words="english")
+            X = vectorizer.fit_transform(docs)
+
+            lda = LatentDirichletAllocation(n_components=5, random_state=42)
+            lda.fit(X)
+
+            # Extract top words for each topic
+            n_top_words = 5
+            topic_keywords = {}
+            for idx, topic in enumerate(lda.components_):
+                top_features = topic.argsort()[-n_top_words:]
+                topic_keywords[idx] = [vectorizer.get_feature_names_out()[i] for i in top_features]
+
+            # Map each doc to its best topic
+            doc_topics = lda.transform(X)
+            doc_best_topics = doc_topics.argmax(axis=1)
+
+            # Replace text with topic keywords
+            doc_idx = 0
+            for chunk in chunks_metadata:
+                if chunk["text"].strip():
+                    topic_id = doc_best_topics[doc_idx]
+                    chunk["topics"] = topic_keywords[topic_id]   # store list of words
+                    doc_idx += 1
+                del chunk["text"]  # remove raw text
+
+            # Save in session
             session['chunks_metadata'] = chunks_metadata
-            
+        
 
         except Exception as e:
             return f"Error splitting audio: {e}"
@@ -88,9 +114,14 @@ def query_video():
     if request.method == "POST":
         chunks_metadata = session.get('chunks_metadata')
         print(chunks_metadata)
+        if not chunks_metadata:
+            return jsonify({"error": "No video uploaded or processed."}), 400
+        
+
+        
     query_text = request.form["query"]
     return jsonify({"result": f"You searched for: {query_text}"})
 
 
 if __name__ == "__main__":
-    app.run(port=5500,debug=True)
+    app.run(port=5500,debug=True, use_reloader=False)
