@@ -2,3 +2,5 @@
 static/audio
 static/videos
 stt
+__pycache__
+metadata

@@ -52,9 +52,11 @@
         </form>
       {% if query %}
         <h4>Search Result for: "{{ query }}"</h4>
-        <p><b>Matched Topics:</b> {{ matched_topics }}</p>
-        <p><b>Start:</b> {{ start_sec }}s  | <b>End:</b> {{ end_sec }}s</p>
-        <button onclick="playFrom('{{ start_sec }}')">▶ Play from here</button>
+        {% for start_sec in start_secs %}
+          <p><b>Start:</b> {{ start_sec }}s</p>
+          <button onclick="playFrom('{{ start_sec }}')">▶ Play from here</button>
+          <br>
+        {% endfor %}
       {% endif %}
     {% endif %}
 <script>
