@@ -50,11 +50,10 @@ def generate_embeddings(audio,embedding_path, CHUNK_SIZE=30):
     print("===EMBEDDINGS CREATED===")
     return
 
-def most_similar_text(query,file_path,chunk_size):
+def most_similar_text(query,file_path,chunk_size,k):
     query_embedding = summariser_model.encode([query])
     index = faiss.read_index(file_path)
-    D, I = index.search(query_embedding, k=1)
-    best_idx = I[0][0]
-    return int(best_idx*chunk_size)
-    
+    D, I = index.search(query_embedding, k=k)
+    timestamps = [int(idx * chunk_size) for idx, dist in zip(I[0], D[0])]
+    return timestamps
 

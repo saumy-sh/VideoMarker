@@ -99,7 +99,8 @@ def query_video():
         query = request.form.get("query", "").strip().lower()
         if not query:
             return jsonify({"error": "No query provided."}), 400
-        time_starts = most_similar_text(query,file_path,CHUNK_SIZE)
+        k = int(request.form.get("k", 3))
+        time_starts = most_similar_text(query,file_path,CHUNK_SIZE,k)
         # time_starts = similar_keywords(query,keywords_dict)
         
         # # TF-IDF similarity
@@ -122,7 +123,7 @@ def query_video():
             duration=session.get("video_duration"),
             query=query,
             # matched_topics=best_chunk["topics"],
-            start_secs=[time_starts],
+            start_secs=time_starts,
         )
         
     query_text = request.form["query"]

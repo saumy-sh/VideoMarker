@@ -16,9 +16,8 @@
     .search-bar {
       margin-top: 20px;
     }
-    input[type="text"] {
+    input[type="text"], select {
       padding: 8px;
-      width: 300px;
       margin-right: 10px;
     }
     button {
@@ -47,9 +46,19 @@
         <form method="post" action="/query" class="search-bar">
             <div class="search-bar">    
                 <input type="text" name="query" id="query" placeholder="Search in video..." required>  
+
+                <!-- Dropdown for k -->
+                <label for="k">Results:</label>
+                <select name="k" id="k">
+                  <option value="1">1</option>
+                  <option value="3" selected>3</option>
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                </select>
             </div>
             <button type="submit">Search</button>
         </form>
+
       {% if query %}
         <h4>Search Result for: "{{ query }}"</h4>
         {% for start_sec in start_secs %}
