@@ -2,15 +2,15 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 import os
 from pydub import AudioSegment
 import numpy as np
-from vosk import Model, KaldiRecognizer
+# from vosk import Model, KaldiRecognizer
 import json
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from keyword_generator import generate_keywords,similar_keywords
+# from sklearn.feature_extraction.text import CountVectorizer
+# from sklearn.decomposition import LatentDirichletAllocation
+# from sklearn.feature_extraction.text import TfidfVectorizer
+# from sklearn.metrics.pairwise import cosine_similarity
+# from keyword_generator import generate_keywords,similar_keywords
 import uuid
-
+from summariser_embedder import generate_embeddings,most_similar_text
 
 
 # chunking size
@@ -61,11 +61,12 @@ def index():
 
         
         # try:
-        keywords_dict = generate_keywords(audio,CHUNK_SIZE) 
+        # keywords_dict = generate_keywords(audio,CHUNK_SIZE) 
         file_id = str(uuid.uuid4())
-        file_path = os.path.join(METADATA_DIR, f"{file_id}.json")
-        with open(file_path,"w") as f:
-            json.dump(keywords_dict,f)
+        file_path = os.path.join(METADATA_DIR, f"{file_id}.faiss")
+        generate_embeddings(audio,file_path,CHUNK_SIZE)
+        # with open(file_path,"w") as f:
+        #     json.dump(keywords_dict,f)
         session["metadata"] = file_id
         # except Exception as e:
         #     return f"Error splitting audio: {e}"
@@ -85,20 +86,21 @@ def index():
 def query_video():
     if request.method == "POST":
         file_id = session['metadata']
-        file_path = os.path.join(METADATA_DIR, f"{file_id}.json")
-        with open(file_path,"r") as f:
-            keywords_dict = json.load(f)
+        file_path = os.path.join(METADATA_DIR, f"{file_id}.faiss")
+        print(file_path)
+        # with open(file_path,"r") as f:
+        #     keywords_dict = json.load(f)
         
         print("==============================")
-        print(keywords_dict)
-        if not keywords_dict:
-            return jsonify({"error": "No video uploaded or processed."}), 400
+        # print(keywords_dict)
+        # if not keywords_dict:
+        #     return jsonify({"error": "No video uploaded or processed."}), 400
 
         query = request.form.get("query", "").strip().lower()
         if not query:
             return jsonify({"error": "No query provided."}), 400
-
-        time_starts = similar_keywords(query,keywords_dict)
+        time_starts = most_similar_text(query,file_path,CHUNK_SIZE)
+        # time_starts = similar_keywords(query,keywords_dict)
         
         # # TF-IDF similarity
         # tfidf_vectorizer = TfidfVectorizer(stop_words="english")
@@ -120,7 +122,7 @@ def query_video():
             duration=session.get("video_duration"),
             query=query,
             # matched_topics=best_chunk["topics"],
-            start_secs=time_starts,
+            start_secs=[time_starts],
         )
         
     query_text = request.form["query"]
